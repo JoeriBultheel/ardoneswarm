@@ -9,4 +9,5 @@ Code to control multiple Parrot A.R. Drones simultaneously.
 * **run script/connect**. see script/connect -h for help (make sure to select valid available ip-adress)
 * **repeat for all drones**
 * **connect laptop to wifi**
+* **change ip-adress in the 'dronesData' dictionary to those of your connected drones**
 * **run node multiRepl.js and have fun!** tryout swarm> takeoff :)

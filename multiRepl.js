@@ -14,13 +14,13 @@ for(var name in dronesData){
 	console.log("created a drone");
 };
 
-takeoffFunc = function () {
+takeoff = function () {
 	for(var name in drones){
 		drones[name].takeoff();
 	}
 }
 
-landFunc = function () {
+land = function () {
 	for(var name in drones){
 		drones[name].land();
 	}
@@ -29,6 +29,3 @@ landFunc = function () {
 var replServer = repl.start({
 	prompt: "swarm >",
 });
-
-replServer.context.takeoff = takeoffFunc;
-replServer.context.land = landFunc;

@@ -1,5 +1,8 @@
 # ardroneswarm
-Code to control multiple Parrot A.R. Drones simultaneously.
+Code to control multiple Parrot A.R. Drones simultaneously. 
+Features include: 
+  - controlling the drones with a wireless bluetooth PS3 controller. 
+  - drones doing person tracking (following a person with a marker/color-tag included in the parrot AR 2.0 box) 
 
 ### instructions
 
@@ -10,4 +13,4 @@ Code to control multiple Parrot A.R. Drones simultaneously.
 * **repeat for all drones**
 * **connect laptop to wifi**
 * **change ip-adress in the 'dronesData' dictionary to those of your connected drones**
-* **run node multiRepl.js and have fun!** tryout swarm> takeoff :)
+* **run node multiRepl.js and have fun!** tryout swarm> takeoff() :)

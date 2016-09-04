@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Node JS Copter Demo</title>
+    <script src="nodecopter-client.js"></script>
+    <script src="https://cdn.socket.io/socket.io-1.0.6.js"></script>
+    <script src="jquery.min.js"></script>
+    <script>
+        $(function () {
+
+            function startArDRoneStream() {
+                  new NodecopterStream(document.getElementById("droneVideoFeed"), {port: 3002}); //+i
+            }
+
+            function startArDroneController(){
+
+                var socket = io.connect('http://localhost:3001'); //.connect('http://localhost:8002'); //'http://localhost:3002'
+                socket.on('connect', function () { // TIP: you can avoid listening on `connect` and listen on events directly too!
+                    console.log("Connection Successful");
+                });
+
+                socket.on('event', function (data) {
+
+                    if(data.name=="battery"){
+                        $("#battery-indicator").css('width',data.value[0]+'%');
+                        $("#battery-value").html(data.value[0]+'%');
+                    }
+                });
+            }
+            startArDRoneStream();
+            startArDroneController();
+        })
+    </script>
+    <style>
+        body {
+            background-color: #5E818C;
+        }
+        table {
+          background: #394D54;
+        }
+        table td {
+          padding: 20px;
+        }
+        h3 {
+          color: white;
+          background: #2784A3;
+          text-align: center;
+          padding: 10px;
+          font-family: "Helvetica";
+        }
+        #battery {
+            color: white;
+            border:1px solid black;
+            width:100px;
+            height:10px;
+            text-align: center;
+        }
+        .bar {
+            margin: 5px 0 3px;
+            border: 6px solid #333;
+            background: #333;
+            color: white;
+        }
+        .bar > span {
+            display: block;
+            height: 10px;
+        }
+        .color0 > span {
+            background-color: white; //#FF0000
+        }
+     </style>
+</head>
+<body>
+        <h3>Drone 1</h3>
+        <div id="droneVideoFeed"></div>
+        <h3><span>Battery</span> - <span id="battery-value"></span></h3>
+        <div class="bar color0">
+        <span id="battery-indicator" style="width:20%"></span>
+        </div>
+</body>
+</html>

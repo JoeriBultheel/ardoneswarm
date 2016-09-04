@@ -30,23 +30,21 @@ var depth_ctrl = new Controller(0.4, 0.01, 0.1);
 
 dronesData =
 {
-   drone1 : {ip : "10.0.1.10", tracking: false}//,
-   //drone2 : {ip : "10.0.1.11", tracking: false},
-  //  drone3 : {ip : "10.0.1.12"}
+   drone1 : {ip : "10.0.1.10"}//,
+   //drone2 : {ip : "10.0.1.11"},
 }
 
 drones = {};
 
 //MAKE & CONFIGURE THE DRONES
-
 for(var name in dronesData){
 	drones[name] = arDrone.createClient(dronesData[name]); //dronesData[name]
-  //create the dronestreams for the video feeds
   var idx = Object.keys(dronesData).indexOf(name);
+  console.log("created a drone named "+name+" with ip "+dronesData[name].ip);
+  console.log("drone SSID name: "+drones[name].config('network:ssid_single_player',name));
 
+  //create the dronestreams for the video feeds
   require("dronestream").listen(3002+idx, dronesData[name]);
-
-	console.log("created a drone named "+name+" with ip "+dronesData[name].ip);
 
   drones[name].config('general:navdata_demo', true);
   drones[name].config('general:vision_enable', true); //12
@@ -56,23 +54,19 @@ for(var name in dronesData){
   drones[name].config('pic:ultrasound_freq', (idx%2==0)?7:8); //7: 22.22Hz, 8: 25Hz  -- if idx is odd ...
   drones[name].config('control:altitude_max', 3000); //7: [500-5000] /1000 = 0.5m-5m
 
-  console.log("drone SSID name: "+drones[name].config('network:ssid_single_player',name));
-
-  //drones[name].on('navdata', console.log);
-
+  //TAG TRACKING MECHANISM
   drones[name].on('navdata', function(navdata){
     var tags = Object(navdata['visionDetect']);
     if (tags.nbDetected>0) {
-      //console.log(tags); //.nbDetected
       moveDroneToTarget(drones[name],tags.xc[0],tags.yc[0],tags.dist[0],tags.width[0],tags.height[0]);
-      drones[name].tracking = true;
-      console.log(drones[name].tracking);
+      drones[name]._tagTracking = true;
+      console.log(drones[name]._tagTracking);
     }
     else {
-      if (drones[name].tracking) {
-        drones[name].tracking = false;
+      if (drones[name]._tagTracking) {
+        drones[name]._tagTracking = false;
         drones[name].stop();
-        console.log(drones[name].tracking);
+        console.log(drones[name]._tagTracking);
       }
     }
   });
@@ -82,17 +76,13 @@ moveDroneToTarget = function (drone,x,y,z,width,height) {
 
   var tagCenterX = x + (width * 0.5);
   var tagCenterY = y + (height * 0.5);
-
   var heightAmount = -(tagCenterY - 500) / 500;
   var turnAmount = -(tagCenterX - 500) / 500;
-
-  console.log("z issss = "+z);
-
   var moveAmount = -(z - PERSON_TRACKING_DISTANCE ) / PERSON_TRACKING_DISTANCE;
 
   heightAmount = ver_ctrl.update(-heightAmount); // pid
   turnAmount   = hor_ctrl.update(-turnAmount);   // pid
-  moveAmount = depth_ctrl.update(-moveAmount);
+  moveAmount = depth_ctrl.update(-moveAmount);   //pid
 
   console.log("[heightOffset: "+heightAmount+" turnOffset: "+turnAmount+" moveOffset: "+moveAmount+"]");
 
@@ -130,7 +120,7 @@ land = function () {
 
 clockwise = function (amount) {
 	for(var name in drones){
-    if(!drones[name].tracking){
+    if(!drones[name]._tagTracking){
       drones[name].clockwise(amount)
     }
 	}
@@ -138,7 +128,7 @@ clockwise = function (amount) {
 
 counterClockwise = function (amount) {
 	for(var name in drones){
-    if(!drones[name].tracking){
+    if(!drones[name]._tagTracking){
 		  drones[name].counterClockwise(amount)
     }
 	}
@@ -146,7 +136,7 @@ counterClockwise = function (amount) {
 
 up = function (amount) {
 	for(var name in drones){
-    if(!drones[name].tracking){
+    if(!drones[name]._tagTracking){
 	    drones[name].up(amount)
     }
 	}
@@ -154,7 +144,7 @@ up = function (amount) {
 
 down = function (amount) {
 	for(var name in drones){
-    if(!drones[name].tracking){
+    if(!drones[name]._tagTracking){
 	    drones[name].down(amount)
     }
 	}
@@ -162,7 +152,7 @@ down = function (amount) {
 
 front = function (amount) {
 	for(var name in drones){
-    if(!drones[name].tracking){
+    if(!drones[name]._tagTracking){
 	    drones[name].front(amount)
     }
 	}
@@ -170,7 +160,7 @@ front = function (amount) {
 
 back = function (amount) {
 	for(var name in drones){
-    if(!drones[name].tracking){
+    if(!drones[name]._tagTracking){
 	    drones[name].back(amount)
     }
 	}
@@ -178,7 +168,7 @@ back = function (amount) {
 
 left = function (amount) {
 	for(var name in drones){
-    if(!drones[name].tracking){
+    if(!drones[name]._tagTracking){
 	    drones[name].left(amount)
     }
 	}
@@ -186,7 +176,7 @@ left = function (amount) {
 
 right = function (amount) {
 	for(var name in drones){
-    if(!drones[name].tracking){
+    if(!drones[name]._tagTracking){
 	    drones[name].right(amount)
     }
 	}

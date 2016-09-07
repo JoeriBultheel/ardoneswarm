@@ -1,5 +1,5 @@
 PILOT_ACCELERATION = 0.05;
-PERSON_TRACKING_DISTANCE = 300;
+PERSON_TRACKING_DISTANCE = 200;
 
 var repl = require("repl");
 var arDrone = require('ar-drone');
@@ -30,8 +30,10 @@ var depth_ctrl = new Controller(0.4, 0.01, 0.1);
 
 dronesData =
 {
-   drone1 : {ip : "10.0.1.10"}//,
+   drone1 : {ip : "10.0.1.10"},
    //drone2 : {ip : "10.0.1.11"},
+   //drone3 : {ip : "10.0.1.12"},
+   //drone4 : {ip : "10.0.1.13"},
 }
 
 drones = {};
@@ -41,35 +43,42 @@ for(var name in dronesData){
 	drones[name] = arDrone.createClient(dronesData[name]); //dronesData[name]
   var idx = Object.keys(dronesData).indexOf(name);
   console.log("created a drone named "+name+" with ip "+dronesData[name].ip);
-  console.log("drone SSID name: "+drones[name].config('network:ssid_single_player',name));
+  //console.log("drone SSID name: "+drones[name].config('network:ssid_single_player',"drone2"));
 
   //create the dronestreams for the video feeds
   require("dronestream").listen(3002+idx, dronesData[name]);
 
   drones[name].config('general:navdata_demo', true);
-  drones[name].config('general:vision_enable', true); //12
   drones[name].config('detect:detect_type', 13); //12
   drones[name].config('detect:enemy_colors', 3); //12
   drones[name].config('detect:enemy_without_shell', false); //12
   drones[name].config('pic:ultrasound_freq', (idx%2==0)?7:8); //7: 22.22Hz, 8: 25Hz  -- if idx is odd ...
-  drones[name].config('control:altitude_max', 3000); //7: [500-5000] /1000 = 0.5m-5m
+  drones[name].config('control:altitude_max', 5000); //7: [500-5000] /1000 = 0.5m-5m
+  drones[name].config('control:euler_angle_max', 0.3); //7: SET TO MAX SPEED 0.5
+
+  drones[name]._absModePhiValue = -0.17; //-0.1; //angle for absolute mode
 
   //TAG TRACKING MECHANISM
   drones[name].on('navdata', function(navdata){
+
+    //console.log(Object(navdata['droneState']));
+
     var tags = Object(navdata['visionDetect']);
     if (tags.nbDetected>0) {
       moveDroneToTarget(drones[name],tags.xc[0],tags.yc[0],tags.dist[0],tags.width[0],tags.height[0]);
-      drones[name]._tagTracking = true;
-      console.log(drones[name]._tagTracking);
+      if (!drones[name]._tagTracking) {
+        drones[name]._tagTracking = true;
+        console.log("TRACKING")
+      }
     }
     else {
       if (drones[name]._tagTracking) {
         drones[name]._tagTracking = false;
         drones[name].stop();
-        console.log(drones[name]._tagTracking);
+        console.log("NOT TRACKING")
       }
     }
-  });
+   });
 };
 
 moveDroneToTarget = function (drone,x,y,z,width,height) {
@@ -84,22 +93,16 @@ moveDroneToTarget = function (drone,x,y,z,width,height) {
   turnAmount   = hor_ctrl.update(-turnAmount);   // pid
   moveAmount = depth_ctrl.update(-moveAmount);   //pid
 
-  console.log("[heightOffset: "+heightAmount+" turnOffset: "+turnAmount+" moveOffset: "+moveAmount+"]");
-
   var lim = 0.1;
   if( Math.abs( turnAmount ) > lim || Math.abs( heightAmount ) > lim || Math.abs( moveAmount ) > lim ){
-    console.log( "  turning " + turnAmount );
     if( turnAmount < 0 ) drone.clockwise( Math.abs( turnAmount ) );
     else drone.counterClockwise( turnAmount );
 
-    console.log( "  going vertical " + heightAmount );
     if(  heightAmount < 0 ) drone.down( Math.abs(heightAmount) );
     else drone.up( heightAmount );
 
-    console.log( "  moving " + moveAmount );
     if(  moveAmount < 0 ) drone.front( Math.abs(moveAmount) );
     else drone.back( moveAmount );
-
   }
   else {
     drone.stop();
@@ -225,9 +228,10 @@ flipLeft = function () {
   }
 }
 
-enableAbsoluteMode = function (value) {
+enableAbsoluteMode = function () {
   for(var name in drones){
-    drones[name]._absoluteMode = value;
+    drones[name]._absoluteMode = !drones[name]._absoluteMode;
+    console.log(drones[name]._absoluteMode ? "ABSOLUTE MODE" : "NORMAL MODE");
   }
 }
 
@@ -264,28 +268,30 @@ controller.on('x:press', function (data) {
 });
 
 controller.on('square:press', function (data) {
-	console.log("blink leds");
-  blinkLeds();
-  batteryLife();
+  console.log("calibrating magnetometer");
+  calibrate();
 });
 
 controller.on('circle:press', function (data) {
-	console.log("random animation !!!");
+  console.log("Do random animation");
   doRandomAnimation();
 });
 
 controller.on('start:press', function (data) {
-  disableEmergency();
+  console.log("Perform Flat Trim - fetch battery life - blink leds");
+  flatTrim();
+  blinkLeds();
+  batteryLife();
 });
 
 controller.on('select:press', function (data) {
-  flatTrim();
-  console.log("Perform Flat Trim");
+  console.log("Disable Emergency");
+  disableEmergency();
 });
 
 controller.on('l2:press', function(data) {
-  console.log("stop");
-  stop();
+  console.log("CONTROL STYLE:");
+  enableAbsoluteMode();
 });
 
 controller.on('r2:press', function(data) {
@@ -293,21 +299,25 @@ controller.on('r2:press', function(data) {
   stop();
 });
 
+//MOVEMENT CONTROLL
+
 controller.on('l1:press', function(data) {
-  console.log("REFERENCED CONTROL");
-  enableAbsoluteMode(false);
+  counterClockwise(0.9);
+});
+
+controller.on('l1:release', function(data) {
+  counterClockwise(0);
 });
 
 controller.on('r1:press', function(data) {
-  console.log("ABSOLUTE CONTROL");
-  enableAbsoluteMode(true);
+  clockwise(0.9);
 });
 
-//MOVEMENT CONTROLL
+controller.on('r1:release', function(data) {
+  clockwise(0);
+});
 
 controller.on('dpadUp:press', function(data) {
-
-  console.log(droneMovements);
   //if the movement isn't registered yet, add it with initial acceleration
     if (droneMovements["front"]===null) {
       droneMovements["front"] = PILOT_ACCELERATION;
@@ -365,12 +375,8 @@ controller.on('dpadLeft:release', function(data) {
 
 
 setInterval(function(){
-
     for (var key in droneMovements) {
-
       if (droneMovements[key] != null) {
-
-        console.log("the KEY: "+key);
 
         switch (key) {
           case "front":
@@ -385,45 +391,38 @@ setInterval(function(){
           case "right":
             right(droneMovements[key]);
             break;
-
         }
         //update speed
-        droneMovements[key] = droneMovements[key] + PILOT_ACCELERATION / (1 - droneMovements[key]);
-
-        console.log(droneMovements);
-
+        droneMovements[key] = droneMovements[key] + PILOT_ACCELERATION / (1 - Math.min(droneMovements[key],0.999));
       }
     }
 },100);
-
 
 
 var replServer = repl.start({
 	prompt: "swarm >",
 });
 
-
-
 //add event handlers:
 controller.on('right:move', function(data) {
 
-  	if (data.x < 128) {
-  		var amount = (128-data.x)/128.0;
-      if (amount > 0.1) {
-        counterClockwise(amount/2.0);
-        console.log("TURN-LEFT: "+amount/2.0);
-      }
-  	}
-  	else if (data.x > 128) {
-  		var amount = (data.x-128)/128.0;
-      if (amount > 0.1) {
-		    clockwise(amount/2.0);
-	      console.log("TURN-RIGHT: "+amount/2.0);
-      }
-  	}
-  	else {
-  		//stop();
-  	}
+  	// if (data.x < 128) {
+  	// 	var amount = (128-data.x)/128.0;
+    //   if (amount > 0.1) {
+    //     counterClockwise(amount/2.0);
+    //     console.log("TURN-LEFT: "+amount/2.0);
+    //   }
+  	// }
+  	// else if (data.x > 128) {
+  	// 	var amount = (data.x-128)/128.0;
+    //   if (amount > 0.1) {
+		//     clockwise(amount/2.0);
+	  //     console.log("TURN-RIGHT: "+amount/2.0);
+    //   }
+  	// }
+  	// else {
+  	// 	//stop();
+  	// }
 
   	if (data.y < 128) {
   		var amount = (128-data.y)/128.0
